@@ -27,7 +27,15 @@ class ViewController: UIViewController {
         passwordTextField.placeholder = "Rahasia"
         loginButton.setTitle("Masuk", for: UIControl.State.normal)
         
-        
+        ApiServices.shared.loadLatestNews { result in
+            switch result {
+            case .success(let newList):
+                print(newList)
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+            
+        }
     }
 
     @IBAction func loginButtonTapped(_ sender: Any) {
