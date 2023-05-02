@@ -7,6 +7,7 @@
 
 import Foundation
 import Alamofire
+import UIKit
 
 class ApiServices {
     static let shared: ApiServices = ApiServices()
@@ -29,6 +30,35 @@ class ApiServices {
                 }
             
         }
+    }
+    
+    func loadTopNews(completion: @escaping (Result<[News], Error>) -> Void) {
+        let urlString = "\(BASE_URL)/viewed/1.json"
+        AF.request(urlString, method: HTTPMethod.get, parameters: ["api-key": API_KEY])
+            .validate()
+            .responseDecodable(of: NewsResponse.self) { respose in
+                switch respose.result {
+                case .success(let newsResponse):
+                    completion(.success(newsResponse.results))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            
+        }
+    }
+    
+    func downloadImage(url: String, completion: @escaping (Result<UIImage?, Error>) -> Void){
+        AF.request(url)
+            .validate()
+            .responseData { response in
+                switch response.result {
+                case .success(let data):
+                    let image = UIImage(data: data)
+                    completion(.success(image))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
     }
     
 //    func loadNews(completion: @escaping (Result<[News], Error>) -> Void) {
