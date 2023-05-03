@@ -14,6 +14,7 @@ class HomeViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     weak var refreshControl: UIRefreshControl!
     
+    weak var collectionView: UICollectionView?
     weak var pageControl: UIPageControl?
     
     var topNewsList: [News] = []
@@ -23,6 +24,8 @@ class HomeViewController: UIViewController {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
+        tableView.register(UINib(nibName: "NewsViewCell", bundle: nil), forCellReuseIdentifier: "custom_news_cell")
+        
         tableView.dataSource = self
         tableView.delegate = self
         
@@ -30,6 +33,8 @@ class HomeViewController: UIViewController {
         tableView.refreshControl = refreshControl
         self.refreshControl = refreshControl
         refreshControl.addTarget(self, action: #selector(self.refresh(_:)), for: .valueChanged)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(self.readingListDeleted(_:)), name: .deleteReadingList, object: nil)
         
         refreshControl.beginRefreshing()
         loadLatestNews()
@@ -39,6 +44,10 @@ class HomeViewController: UIViewController {
     @objc func refresh(_ sender: Any) {
         loadLatestNews()
         loadTopNews()
+    }
+    
+    @objc func readingListDeleted(_ sender: Any) {
+        tableView.reloadData()
     }
     
     func loadLatestNews() {
@@ -108,6 +117,9 @@ extension HomeViewController: UITableViewDataSource {
             cell.collectionView.dataSource = self
             cell.collectionView.delegate = self
             cell.collectionView.reloadData()
+            self.collectionView = cell.collectionView
+            
+            cell.delegate = self
             
             return cell
         } else {
@@ -115,7 +127,24 @@ extension HomeViewController: UITableViewDataSource {
             
             let news = latestNewsList[indexPath.row]
             cell.titleLabel.text = news.title
-            cell.dateLabel.text = "\(news.publishDate) - \(news.section)"
+            cell.dateLabel.text = "\(news.publishDate) • \(news.section)"
+            
+            if CoreDataStorage.shared.isAddedToReadingList(newsId: news.id) {
+                if #available(iOS 13.0, *) {
+                    cell.bookmarkLabel.setImage(UIImage(systemName: "bookmark.fill"), for: .normal)
+                    
+                    cell.bookmarkLabel.isEnabled = false
+                }
+            } else {
+                if #available(iOS 13.0, *) {
+                    cell.bookmarkLabel.setImage(UIImage(systemName: "bookmark"), for: .normal)
+                    
+                    cell.bookmarkLabel.isEnabled = true
+                }
+            }
+            
+            cell.delegate = self
+            
             if let url = news.media.first?.metadata.last?.url {
                 //            ApiServices.shared.downloadImage(url: url) { result in
                 //                switch result {
@@ -177,7 +206,7 @@ extension HomeViewController: UICollectionViewDataSource {
         }
         
         cell.titleLabel.text = news.title
-        cell.subtitleLabel.text = "\(news.publishDate) - \(news.section)"
+        cell.subtitleLabel.text = "\(news.publishDate) • \(news.section)"
         
         return cell
     }
@@ -198,7 +227,7 @@ extension HomeViewController: UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = UIScreen.main.bounds.width
-        return CGSize(width: width, height: 256)
+        return CGSize(width: width, height: 200)
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -207,4 +236,29 @@ extension HomeViewController: UICollectionViewDelegateFlowLayout {
             pageControl?.currentPage = page
         }
     }
+}
+
+extension HomeViewController: NewsViewCellDelegate {
+    func newsViewCellBookmarkButtonTapped(_ cell: NewsViewCell) {
+        if let indexPath = tableView.indexPath(for: cell) {
+            let news = latestNewsList[indexPath.row]
+            
+            CoreDataStorage.shared.addReadingList(news: news)
+                        
+            if #available(iOS 13.0, *) {
+                cell.bookmarkLabel.setImage(UIImage(systemName: "bookmark.fill"), for: .normal)
+            }
+            
+            cell.bookmarkLabel.isEnabled = false
+        }
+    }
+}
+
+extension HomeViewController: TopNewsListViewCellDelegate {
+    func topNewsListPageControlValueChanged(_ cell: TopNewsListViewCell) {
+        let page = cell.pageControl.currentPage
+        collectionView?.scrollToItem(at: IndexPath(item: page, section: 0), at: .centeredHorizontally, animated: true)
+    }
+    
+    
 }

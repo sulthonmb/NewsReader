@@ -34,4 +34,12 @@ struct News: Decodable {
         self.media = try container.decodeIfPresent([Media].self, forKey: .media) ?? []
     }
     
+    init(url: String, id: Int, publishDate: String, section: String, title: String, mediaUrl: String) {
+        self.url = url
+        self.id = id
+        self.publishDate = publishDate
+        self.section = section
+        self.title = title
+        self.media = [Media(type: "", caption: "", metadata: [MediaMetadata(url: mediaUrl, format: "", height: 0, width: 0)])]
+    }
 }
